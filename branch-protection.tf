@@ -15,7 +15,7 @@ resource "github_repository_ruleset" "protect_main" {
 
   rules {
     pull_request {
-      required_approving_review_count = 1
+      required_approving_review_count = 0
       dismiss_stale_reviews_on_push   = true
     }
 
@@ -33,4 +33,26 @@ resource "github_repository" "managed_settings" {
   allow_squash_merge  = true
   allow_rebase_merge  = true
   allow_update_branch = true
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = [
+      description,
+      homepage_url,
+      has_issues,
+      has_projects,
+      has_wiki,
+
+      has_discussions,
+      visibility,
+      archived,
+      topics,
+      vulnerability_alerts,
+      delete_branch_on_merge,
+      allow_auto_merge,
+      web_commit_signoff_required,
+      pages,
+      security_and_analysis,
+    ]
+  }
 }
