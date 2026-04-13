@@ -23,3 +23,14 @@ resource "github_repository_ruleset" "protect_main" {
     deletion         = true
   }
 }
+
+resource "github_repository" "managed_settings" {
+  for_each = toset(var.protected_repositories)
+
+  name = each.value
+
+  allow_merge_commit  = false
+  allow_squash_merge  = true
+  allow_rebase_merge  = true
+  allow_update_branch = true
+}
