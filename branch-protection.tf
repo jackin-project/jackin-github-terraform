@@ -24,6 +24,27 @@ resource "github_repository_ruleset" "protect_main" {
   }
 }
 
+resource "github_repository_ruleset" "protect_tags" {
+  for_each = toset(var.protected_repositories)
+
+  repository  = each.value
+  name        = "protect-tags"
+  target      = "tag"
+  enforcement = "active"
+
+  conditions {
+    ref_name {
+      include = ["~ALL"]
+      exclude = []
+    }
+  }
+
+  rules {
+    non_fast_forward = true
+    deletion         = true
+  }
+}
+
 resource "github_repository" "managed_settings" {
   for_each = toset(var.protected_repositories)
 
