@@ -111,6 +111,52 @@ tofu plan
 
 Rotation is cheap. Do it on a schedule, not only after incidents.
 
+## Manually-managed org settings
+
+Not every GitHub org setting is reachable via Terraform/OpenTofu. Some are only exposed in the GitHub Web UI — the `integrations/terraform-provider-github` provider doesn't wrap them, and in some cases the GitHub REST API itself treats them as read-only. Changes to these settings live outside IaC and must be verified periodically for drift.
+
+### Current manually-managed settings
+
+| Setting | Desired | Verified | Source of truth |
+|---|---|---|---|
+| `members_can_delete_repositories` | `false` | 2026-04-16 | GitHub UI: **Settings → Member privileges → Repository deletion and transfer** |
+
+### Drift check
+
+Run monthly, or after any org-owner change:
+
+```bash
+gh api orgs/jackin-project --jq '{
+  members_can_delete_repositories,
+  members_can_change_repo_visibility,
+  members_can_invite_outside_collaborators,
+  members_can_delete_issues
+}'
+```
+
+Expected baseline (as of 2026-04-16):
+
+```json
+{
+  "members_can_delete_repositories": false,
+  "members_can_change_repo_visibility": true,
+  "members_can_invite_outside_collaborators": true,
+  "members_can_delete_issues": false
+}
+```
+
+If any value diverges from the "Desired" column above, restore via the GitHub UI path noted in the table. Document any intentional change by updating both this table and the baseline block.
+
+### Why these aren't in Terraform
+
+- `members_can_delete_repositories`: the GitHub REST `PATCH /orgs/{org}` endpoint does not accept this field as a writable parameter (verified against [GitHub REST docs](https://docs.github.com/en/rest/orgs/orgs?apiVersion=2022-11-28#update-an-organization) on 2026-04-16); GitHub silently accepts and echoes it in responses but does not persist the change. The Terraform provider also has no attribute for it. Only the GitHub UI actually writes this setting. A GraphQL mutation path may exist and is worth investigating if automation becomes critical.
+
+### What this does NOT protect against
+
+- **Org owners can always delete repositories** regardless of member-privilege settings. Minimize the owner set and rely on [GitHub's 90-day repo restore](https://docs.github.com/en/repositories/creating-and-managing-repositories/restoring-a-deleted-repository) as a recovery mechanism.
+- Repo admins can still delete their own repos if the member-privilege doesn't reach them (e.g., outside collaborators with admin role).
+- Terraform's `lifecycle { prevent_destroy = true }` on `github_repository.managed_settings` stops IaC-initiated deletion but does nothing for UI-initiated deletion. Both guards are needed.
+
 ## Conventions
 
 - Branch naming: `chore/*`, `feat/*`, `fix/*` — never include a token, PAT suffix, or credential in the branch name.
