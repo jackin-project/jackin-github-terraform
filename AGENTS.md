@@ -1,6 +1,6 @@
 # AGENTS.md — jackin-github-terraform
 
-This repository manages GitHub org settings (branch protection rulesets, repo merge policy) via Terraform. **It is public.** Assume anything committed here is world-readable and indexed by GitHub, Google, and archival mirrors — there is no "undo" for a leaked secret.
+This repository manages GitHub org settings (branch protection rulesets, repo merge policy) via OpenTofu. **It is public.** Assume anything committed here is world-readable and indexed by GitHub, Google, and archival mirrors — there is no "undo" for a leaked secret.
 
 Treat every change as if it will be screenshotted and posted on Hacker News.
 
@@ -8,8 +8,8 @@ Treat every change as if it will be screenshotted and posted on Hacker News.
 
 The assets this repo can leak:
 
-1. **GitHub PAT / App credentials** used to run `terraform apply`. These have write access to org settings — a leak lets an attacker weaken branch protection, disable required checks, or push malicious code to default branches.
-2. **`terraform.tfstate`** — contains the GitHub token used at last apply in plaintext (Terraform stores provider config including sensitive env values).
+1. **GitHub PAT / App credentials** used to run `tofu apply`. These have write access to org settings — a leak lets an attacker weaken branch protection, disable required checks, or push malicious code to default branches.
+2. **`terraform.tfstate`** — contains the GitHub token used at last apply in plaintext (OpenTofu stores provider config including sensitive env values in the state file, which still uses the `terraform.tfstate` default filename for compatibility).
 3. **Plan files (`*.tfplan`)** — same risk as state.
 4. **Future secrets added to `.tf` files** — if anyone ever hardcodes a token "temporarily for testing," it lands in git history forever, even if deleted in a later commit.
 
@@ -29,16 +29,33 @@ Run both of these before every `git commit`. If either returns anything, **stop 
 # 1. What's about to be committed? Make sure nothing surprising is staged.
 git status --porcelain
 
-# 2. Secret-pattern scan across tracked + staged content.
-{ git ls-files; git diff --cached --name-only; } | sort -u | xargs -r \
+# 2. Secret-pattern scan across staged content only.
+#    (A broader audit over all tracked files is a separate manual step; see
+#     the "Periodic full-history audit" section below.)
+git diff --cached --name-only -z | xargs -0 -r \
   grep -l -iE "ghp_|gho_|ghs_|ghr_|github_pat_|BEGIN [A-Z ]*PRIVATE KEY|aws_access_key_id|aws_secret_access_key|bearer [a-z0-9-]{20,}" 2>/dev/null
 ```
 
 If check 2 prints a filename: do not commit. Rotate the leaked credential immediately (GitHub tokens: delete and regenerate; SSH keys: revoke), then remove the content.
 
+## Periodic full-history audit
+
+The pre-commit scan only inspects staged content. Before a high-risk event (making this repo public, onboarding a new collaborator, rotating a major credential), also run the broader scan against every tracked file and every commit in history:
+
+```bash
+# Tracked content
+git ls-files -z | xargs -0 -r \
+  grep -l -iE "ghp_|gho_|ghs_|ghr_|github_pat_|BEGIN [A-Z ]*PRIVATE KEY|aws_access_key_id|aws_secret_access_key|bearer [a-z0-9-]{20,}" 2>/dev/null
+
+# Git history (every blob ever committed)
+git log -p --all -G "ghp_|gho_|ghs_|ghr_|github_pat_|BEGIN [A-Z ]*PRIVATE KEY|aws_access_key_id|aws_secret_access_key" | head -200
+```
+
+If either prints anything that isn't a documentation reference to the patterns themselves, rotate and document the incident.
+
 ## Required post-apply verification
 
-After running `terraform apply`, before your next commit:
+After running `tofu apply`, before your next commit:
 
 ```bash
 # Must output NOTHING. If anything shows up, the .gitignore failed — add the pattern first.
@@ -51,7 +68,7 @@ The provider takes credentials from the environment. Set them in your shell sess
 
 ```bash
 # Option 1: Personal Access Token (fine-grained, org-scoped)
-export GITHUB_TOKEN="github_pat_..."
+export GITHUB_TOKEN="<paste-token-here>"
 
 # Option 2: GitHub App (preferred for production)
 export GITHUB_APP_ID="..."
@@ -65,7 +82,7 @@ Store the values in a password manager or a file **outside** this repo (`~/.secr
 
 - `terraform.tfstate` is local-only. It stays on your machine.
 - Back it up to an encrypted location if you need recovery (not S3/GCS public buckets, not a git submodule).
-- If the state is ever lost, you can recover by re-importing every resource — painful but possible. See `terraform import` docs.
+- If the state is ever lost, you can recover by re-importing every resource — painful but possible. See `tofu import` docs.
 - Never email, Slack, or paste state contents.
 
 ## If a secret is leaked
@@ -77,7 +94,7 @@ Assume the credential is compromised the instant it hits a public commit.
 3. **Audit logs.** Check `gh api /orgs/jackin-project/audit-log` (requires Enterprise) or `gh api /user/events` for the user whose token leaked to spot any malicious API use.
 4. **Document the incident** — add a note to this file if the threat model shifts.
 
-## Rotating the terraform runner token
+## Rotating the OpenTofu runner token
 
 When the PAT approaches expiration (or on a quarterly schedule):
 
@@ -86,8 +103,8 @@ When the PAT approaches expiration (or on a quarterly schedule):
 # 2. Update your shell/secret manager
 export GITHUB_TOKEN="<paste-new-token-here>"
 
-# 3. Verify terraform still works
-terraform plan
+# 3. Verify tofu still works
+tofu plan
 
 # 4. Delete the old token in GitHub Settings → Personal access tokens
 ```
