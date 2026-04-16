@@ -29,10 +29,11 @@ resource "github_repository" "managed_settings" {
 
   name = each.value
 
-  allow_merge_commit  = false
-  allow_squash_merge  = true
-  allow_rebase_merge  = true
-  allow_update_branch = true
+  allow_merge_commit     = false
+  allow_squash_merge     = true
+  allow_rebase_merge     = true
+  allow_update_branch    = true
+  delete_branch_on_merge = true
 
   lifecycle {
     prevent_destroy = true
@@ -48,7 +49,6 @@ resource "github_repository" "managed_settings" {
       archived,
       topics,
       vulnerability_alerts,
-      delete_branch_on_merge,
       allow_auto_merge,
       web_commit_signoff_required,
       pages,
