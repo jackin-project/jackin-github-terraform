@@ -1,25 +1,29 @@
-# Terraform state and plan artifacts — NEVER commit
+# OpenTofu state and plan artifacts — NEVER commit
 *.tfstate
 *.tfstate.*
 *.tfplan
 crash.log
 crash.*.log
 
-# Terraform working directory and provider cache
+# OpenTofu working directory and provider cache
 .terraform/
 .terraform.tfstate.lock.info
 
-# Terraform variable files — often contain secrets
+# OpenTofu variable files — often contain secrets
 *.tfvars
 *.tfvars.json
 *.auto.tfvars
 *.auto.tfvars.json
 
-# Terraform override files — often used for local-only config
+# OpenTofu override files — often used for local-only config
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+override.tofu
+override.tofu.json
+*_override.tofu
+*_override.tofu.json
 
 # Credentials and environment files
 .env
