@@ -1,5 +1,40 @@
-.terraform/
+# Terraform state and plan artifacts — NEVER commit
 *.tfstate
-*.tfstate.backup
+*.tfstate.*
 *.tfplan
+crash.log
+crash.*.log
+
+# Terraform working directory and provider cache
+.terraform/
+.terraform.tfstate.lock.info
+
+# Terraform variable files — often contain secrets
+*.tfvars
+*.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+
+# Terraform override files — often used for local-only config
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Credentials and environment files
+.env
+.env.*
+.envrc
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# Editor/tool local state
 .worktrees/
+.idea/
+.vscode/
+*.swp
+.DS_Store
