@@ -19,6 +19,19 @@ resource "github_repository_ruleset" "protect_main" {
       dismiss_stale_reviews_on_push   = true
     }
 
+    dynamic "required_status_checks" {
+      for_each = length(lookup(var.repo_required_status_checks, each.value, [])) > 0 ? [1] : []
+      content {
+        strict_required_status_checks_policy = false
+        dynamic "required_check" {
+          for_each = lookup(var.repo_required_status_checks, each.value, [])
+          content {
+            context = required_check.value
+          }
+        }
+      }
+    }
+
     non_fast_forward = true
     deletion         = true
   }
