@@ -21,6 +21,11 @@ variable "repo_required_status_checks" {
   description = "Map of repository name to list of required status check contexts that must pass before merging into the default branch."
   type        = map(list(string))
   default = {
-    jackin = ["Docs / build"]
+    # Transitional dual-context list: "build" is the current docs link-check
+    # job name (mismatch with the previous "Docs / build" value blocked merges
+    # — see jackin-project/jackin#180). "docs-link-check" is the unique name
+    # the docs job will rename to in the next jackin PR. Once that rename
+    # merges, drop "build" from this list in a follow-up apply.
+    jackin = ["build", "docs-link-check"]
   }
 }
