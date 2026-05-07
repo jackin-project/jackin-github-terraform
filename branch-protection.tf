@@ -63,11 +63,13 @@ resource "github_repository" "managed_settings" {
 
   name = each.value
 
-  allow_merge_commit     = false
-  allow_squash_merge     = true
-  allow_rebase_merge     = true
-  allow_update_branch    = true
-  delete_branch_on_merge = true
+  allow_merge_commit          = false
+  allow_squash_merge          = true
+  allow_rebase_merge          = false
+  squash_merge_commit_title   = "PR_TITLE"
+  squash_merge_commit_message = "PR_BODY"
+  allow_update_branch         = true
+  delete_branch_on_merge      = true
 
   lifecycle {
     prevent_destroy = true
