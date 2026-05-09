@@ -15,11 +15,14 @@ resource "github_repository_ruleset" "protect_main" {
 
   rules {
     pull_request {
-      # Single required reviewer raises the floor on "click merge"
-      # safety. Combined with the strict-up-to-date policy below, it
-      # ensures every PR has had a fresh CI run + a human eyeball
-      # before landing on the default branch.
-      required_approving_review_count = 1
+      # Solo-maintainer repo. Requiring an approving review would
+      # block every merge — GitHub does not let the PR author approve
+      # their own PR. The "fresh CI on the merge state" safety net is
+      # carried by `strict_required_status_checks_policy = true` below
+      # plus the aggregator status checks listed in
+      # `var.repo_required_status_checks`. Revisit if/when the project
+      # has a second human reviewer.
+      required_approving_review_count = 0
       dismiss_stale_reviews_on_push   = true
     }
 
