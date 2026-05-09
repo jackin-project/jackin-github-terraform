@@ -15,14 +15,24 @@ resource "github_repository_ruleset" "protect_main" {
 
   rules {
     pull_request {
-      required_approving_review_count = 0
+      # Single required reviewer raises the floor on "click merge"
+      # safety. Combined with the strict-up-to-date policy below, it
+      # ensures every PR has had a fresh CI run + a human eyeball
+      # before landing on the default branch.
+      required_approving_review_count = 1
       dismiss_stale_reviews_on_push   = true
     }
 
     dynamic "required_status_checks" {
       for_each = length(lookup(var.repo_required_status_checks, each.value, [])) > 0 ? [1] : []
       content {
-        strict_required_status_checks_policy = false
+        # Strict policy = the PR branch must be up-to-date with the
+        # base before the merge is allowed, so the green CI run
+        # actually reflects the code that lands on main rather than
+        # the code as it looked when the PR was opened. This closes
+        # the "two PRs that are individually green become red when
+        # combined" hole.
+        strict_required_status_checks_policy = true
         dynamic "required_check" {
           for_each = lookup(var.repo_required_status_checks, each.value, [])
           content {
