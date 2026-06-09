@@ -8,8 +8,9 @@ variable "protected_repositories" {
     "jackin-dev",
     "jackin-github-terraform",
     "jackin-marketplace",
+    "jackin-role-action",
+    "jackin-sentinel",
     "jackin-the-architect",
-    "validate-agent-action",
   ]
 }
 
