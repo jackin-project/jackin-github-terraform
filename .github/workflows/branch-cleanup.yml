@@ -1,0 +1,97 @@
+name: branch-cleanup
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: branch-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.ORG_BRANCH_CLEANUP_TOKEN }}
+      ORG: jackin-project
+      PROTECTED: '^(main|master|develop|release/.*)$'
+    steps:
+      - name: Delete merged, closed, and fully-merged-orphan branches
+        run: |
+          set -uo pipefail
+
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::ORG_BRANCH_CLEANUP_TOKEN secret is not set. Create a fine-grained PAT with 'Contents: write' on all jackin-project repos and add it as a repo secret."
+            exit 1
+          fi
+
+          summary="$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Branch cleanup — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo ""
+          } >> "$summary"
+
+          deleted=0; kept_open=0; kept_unmerged=0; skipped_protected=0; errors=0
+          rm -f /tmp/del.log /tmp/keep.log
+
+          mapfile -t REPOS < <(gh repo list "$ORG" --limit 200 --source --json name,isArchived --jq '.[] | select(.isArchived==false) | .name')
+
+          for repo in "${REPOS[@]}"; do
+            echo "::group::$repo"
+            mapfile -t ENTRIES < <(gh api "repos/$ORG/$repo/branches" --paginate --jq '.[] | .name + "\t" + .commit.sha' 2>/dev/null) || continue
+
+            for entry in "${ENTRIES[@]}"; do
+              branch="${entry%%$'\t'*}"
+              sha="${entry##*$'\t'}"
+
+              if [[ "$branch" =~ $PROTECTED ]]; then
+                skipped_protected=$((skipped_protected+1)); continue
+              fi
+
+              pr_state=$(gh api "repos/$ORG/$repo/pulls" -f state=all -f head="$ORG:$branch" -f per_page=1 --jq '.[0].state // empty' 2>/dev/null)
+
+              if [[ "$pr_state" == "open" ]]; then
+                kept_open=$((kept_open+1))
+                printf -- '- KEEP (open PR): `%s:%s`\n' "$repo" "$branch" >> /tmp/keep.log
+                continue
+              fi
+
+              reason=""
+              if [[ -n "$pr_state" ]]; then
+                reason="PR $pr_state"
+              else
+                ahead=$(gh api "repos/$ORG/$repo/compare/main...$branch" --jq '.ahead_by // 0' 2>/dev/null)
+                if [[ "$ahead" -gt 0 ]]; then
+                  kept_unmerged=$((kept_unmerged+1))
+                  printf -- '- KEEP (no PR, %s unmerged commits): `%s:%s`\n' "$ahead" "$repo" "$branch" >> /tmp/keep.log
+                  continue
+                fi
+                reason="orphan, fully merged (ahead=0)"
+              fi
+
+              if gh api -X DELETE "repos/$ORG/$repo/git/refs/heads/$branch" >/dev/null 2>&1; then
+                deleted=$((deleted+1))
+                printf -- '- DELETE (%s): `%s:%s` @ %s\n' "$reason" "$repo" "$branch" "${sha:0:12}" >> /tmp/del.log
+              else
+                errors=$((errors+1))
+                echo "::warning::Failed to delete $repo:$branch"
+              fi
+            done
+            echo "::endgroup::"
+          done
+
+          {
+            echo "### Deleted ($deleted)"
+            if [ -s /tmp/del.log ]; then sort /tmp/del.log; else echo "_none_"; fi
+            echo ""
+            echo "### Kept — open PRs ($kept_open) / unmerged orphans ($kept_unmerged)"
+            if [ -s /tmp/keep.log ]; then sort /tmp/keep.log; else echo "_none_"; fi
+            echo ""
+            echo "Skipped protected branches: **$skipped_protected** · Errors: **$errors**"
+          } >> "$summary"
+
+          echo "deleted=$deleted kept_open=$kept_open kept_unmerged=$kept_unmerged skipped_protected=$skipped_protected errors=$errors"
+          [ "$errors" -eq 0 ]
