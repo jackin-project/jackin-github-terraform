@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Alexey Zhokhov
+# SPDX-License-Identifier: Apache-2.0
+
 moved {
   from = github_repository.managed_settings["validate-agent-action"]
   to   = github_repository.managed_settings["jackin-role-action"]

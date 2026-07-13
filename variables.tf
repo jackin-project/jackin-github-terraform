@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Alexey Zhokhov
+# SPDX-License-Identifier: Apache-2.0
+
 variable "protected_repositories" {
   description = "List of repositories to apply branch protection rules to"
   type        = list(string)

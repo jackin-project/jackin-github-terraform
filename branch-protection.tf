@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Alexey Zhokhov
+# SPDX-License-Identifier: Apache-2.0
+
 resource "github_repository_ruleset" "protect_main" {
   for_each = toset(var.protected_repositories)
 
