@@ -27,6 +27,7 @@ resource "github_repository_ruleset" "protect_main" {
       # has a second human reviewer.
       required_approving_review_count = 0
       dismiss_stale_reviews_on_push   = true
+      require_last_push_approval      = false
     }
 
     dynamic "required_status_checks" {
