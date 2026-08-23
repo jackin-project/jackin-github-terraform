@@ -1,6 +1,9 @@
 # SPDX-FileCopyrightText: 2026 Alexey Zhokhov
 # SPDX-License-Identifier: Apache-2.0
 
+[settings]
+lockfile = true
+
 [tools]
 opentofu = "1.12.5"
 python = "3.14"
