@@ -57,5 +57,11 @@ variable "repo_required_status_checks" {
       "validate",
       "DCO",
     ]
+    "homebrew-tap"         = ["ci-required", "DCO"]
+    "jackin-agent-smith"   = ["ci-required", "DCO"]
+    "jackin-dev"           = ["ci-required", "DCO"]
+    "jackin-role-action"   = ["ci-required", "DCO"]
+    "jackin-sentinel"      = ["ci-required", "DCO"]
+    "jackin-the-architect" = ["ci-required", "DCO"]
   }
 }

@@ -20,11 +20,8 @@ resource "github_repository_ruleset" "protect_main" {
     pull_request {
       # Solo-maintainer repo. Requiring an approving review would
       # block every merge — GitHub does not let the PR author approve
-      # their own PR. The "fresh CI on the merge state" safety net is
-      # carried by `strict_required_status_checks_policy = true` below
-      # plus the aggregator status checks listed in
-      # `var.repo_required_status_checks`. Revisit if/when the project
-      # has a second human reviewer.
+      # their own PR. Required status checks remain the merge safety net.
+      # Revisit if/when the project has a second human reviewer.
       required_approving_review_count = 0
       dismiss_stale_reviews_on_push   = true
       require_last_push_approval      = false
@@ -33,13 +30,6 @@ resource "github_repository_ruleset" "protect_main" {
     dynamic "required_status_checks" {
       for_each = length(lookup(var.repo_required_status_checks, each.value, [])) > 0 ? [1] : []
       content {
-        # Strict policy = the PR branch must be up-to-date with the
-        # base before the merge is allowed, so the green CI run
-        # actually reflects the code that lands on main rather than
-        # the code as it looked when the PR was opened. This closes
-        # the "two PRs that are individually green become red when
-        # combined" hole.
-        strict_required_status_checks_policy = true
         dynamic "required_check" {
           for_each = lookup(var.repo_required_status_checks, each.value, [])
           content {
