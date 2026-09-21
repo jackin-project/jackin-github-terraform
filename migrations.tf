@@ -1,22 +1,18 @@
 # SPDX-FileCopyrightText: 2026 Alexey Zhokhov
 # SPDX-License-Identifier: Apache-2.0
 
+# Module refactoring: migrate root-level resources into module.repository_policy
 moved {
-  from = github_repository.managed_settings["validate-agent-action"]
-  to   = github_repository.managed_settings["jackin-role-action"]
+  from = github_repository.managed_settings
+  to   = module.repository_policy.github_repository.managed_settings
 }
 
 moved {
-  from = github_repository_ruleset.protect_main["validate-agent-action"]
-  to   = github_repository_ruleset.protect_main["jackin-role-action"]
+  from = github_repository_ruleset.protect_main
+  to   = module.repository_policy.github_repository_ruleset.protect_main
 }
 
-import {
-  to = github_repository.managed_settings["jackin-sentinel"]
-  id = "jackin-sentinel"
-}
-
-import {
-  to = github_repository_ruleset.protect_tags["jackin-role-action"]
-  id = "jackin-role-action:16515394"
+moved {
+  from = github_repository_ruleset.protect_tags
+  to   = module.repository_policy.github_repository_ruleset.protect_tags
 }
