@@ -7,13 +7,6 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      runner:
-        description: Execution backend
-        required: false
-        default: github
-        type: choice
-        options:
-          - github
       scope:
         description: Verification scope
         required: true
@@ -46,8 +39,17 @@ jobs:
       base_sha: ${{ steps.plan.outputs.base_sha }}
       head_sha: ${{ steps.plan.outputs.head_sha }}
       units: ${{ steps.plan.outputs.units }}
+      unit_ids: ${{ steps.plan.outputs.unit_ids }}
       full_units: ${{ steps.plan.outputs.full_units }}
+      plan_digest: ${{ steps.plan.outputs.plan_digest }}
+      excluded: ${{ steps.plan.outputs.excluded }}
       opentofu_matrix: ${{ steps.plan.outputs.opentofu_matrix }}
+      # Presence-only no-work marker: `planned_no_work` is `true` or absent,
+      # never `false`. Consumers MUST branch
+      # `needs.plan.outputs.planned_no_work == 'true'` for the no-work path;
+      # any other value (including absent) means the plan selected work.
+      planned_no_work: ${{ steps.plan.outputs.planned_no_work }}
+      no_work_reason: ${{ steps.plan.outputs.no_work_reason }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -56,12 +58,11 @@ jobs:
           persist-credentials: false
       - name: Set up Velnor workflow runtime
         id: runtime
-        if: ${{ runner.environment == 'github-hosted' }}
-        uses: tailrocks/velnor/.github/actions/setup-velnor-workflow@4fa7a3a85f141a6bb95bc9bdf0eef9e3ddde165d
+        uses: tailrocks/velnor/.github/actions/setup-velnor-workflow@be61acbbbfb71db6b51337e547e39de049d4fc15
         with:
-          rev: 4fa7a3a85f141a6bb95bc9bdf0eef9e3ddde165d
+          rev: be61acbbbfb71db6b51337e547e39de049d4fc15
       - name: Set trusted workflow policy revision
-        run: echo "VELNOR_WORKFLOW_POLICY_REVISION=4fa7a3a85f141a6bb95bc9bdf0eef9e3ddde165d" >> "$GITHUB_ENV"
+        run: echo "VELNOR_WORKFLOW_POLICY_REVISION=be61acbbbfb71db6b51337e547e39de049d4fc15" >> "$GITHUB_ENV"
       - name: Select affected units
         id: plan
         env:
@@ -69,15 +70,26 @@ jobs:
           CI_SCOPE_OVERRIDE: ${{ github.event.inputs.scope || '' }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.inputs.base_sha || github.event.before || 'refs/heads/main' }}
           HEAD_SHA: ${{ github.sha }}
+          VELNOR_PROVIDERS: github-hosted
+          VELNOR_EVENT_TRUSTED: ${{ (!(github.event_name == 'pull_request' && (github.event.pull_request.head.repo.fork || github.event.pull_request.user.type == 'Bot'))) && 'true' || 'false' }}
+          VELNOR_EXPECTED_WORK_FILE: .velnor-ci-expected-work/expected-work.json
         run: |
           set -euo pipefail
           if [[ -z "${CI_SCOPE_OVERRIDE:-}" ]]; then unset CI_SCOPE_OVERRIDE; fi
+          mkdir -p .velnor-ci-expected-work
           velnor-workflow plan --config .github/ci/project.toml
 
+      - name: Publish expected work
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: velnor-expected-work
+          path: .velnor-ci-expected-work/expected-work.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Prepare Velnor workflow runtime
         shell: bash
         env:
-          EXPECTED_REVISION: 4fa7a3a85f141a6bb95bc9bdf0eef9e3ddde165d
+          EXPECTED_REVISION: be61acbbbfb71db6b51337e547e39de049d4fc15
         run: |
           set -euo pipefail
           stage="$RUNNER_TEMP/velnor-workflow-runtime"
@@ -96,7 +108,7 @@ jobs:
       - name: Publish Velnor workflow runtime
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: velnor-workflow-runtime-4fa7a3a85f141a6bb95bc9bdf0eef9e3ddde165d-${{ runner.os }}-${{ runner.arch }}
+          name: velnor-workflow-runtime-be61acbbbfb71db6b51337e547e39de049d4fc15-${{ runner.os }}-${{ runner.arch }}
           path: ${{ runner.temp }}/velnor-workflow-runtime
           if-no-files-found: error
           retention-days: 7
@@ -135,9 +147,9 @@ jobs:
           fi
           git checkout --quiet --detach "$HEAD_SHA"
       - name: Set up Velnor workflow runtime
-        uses: tailrocks/velnor/.github/actions/setup-velnor-workflow@4fa7a3a85f141a6bb95bc9bdf0eef9e3ddde165d
+        uses: tailrocks/velnor/.github/actions/setup-velnor-workflow@be61acbbbfb71db6b51337e547e39de049d4fc15
         with:
-          rev: 4fa7a3a85f141a6bb95bc9bdf0eef9e3ddde165d
+          rev: be61acbbbfb71db6b51337e547e39de049d4fc15
           checkout-path: ${{ github.workspace }}/policy-checkout
       - name: Read declared generator pin
         id: pin
@@ -150,13 +162,13 @@ jobs:
           echo "value=$pin" >> "$GITHUB_OUTPUT"
       - name: Set up declared generator product
         id: renderer
-        if: steps.pin.outputs.value != '4fa7a3a85f141a6bb95bc9bdf0eef9e3ddde165d'
-        uses: tailrocks/velnor/.github/actions/setup-velnor-workflow@4fa7a3a85f141a6bb95bc9bdf0eef9e3ddde165d
+        if: steps.pin.outputs.value != 'be61acbbbfb71db6b51337e547e39de049d4fc15'
+        uses: tailrocks/velnor/.github/actions/setup-velnor-workflow@be61acbbbfb71db6b51337e547e39de049d4fc15
         with:
           rev: ${{ steps.pin.outputs.value }}
           checkout-path: ${{ github.workspace }}/policy-checkout
       - name: Resolve declared generator product
-        if: steps.pin.outputs.value != '4fa7a3a85f141a6bb95bc9bdf0eef9e3ddde165d'
+        if: steps.pin.outputs.value != 'be61acbbbfb71db6b51337e547e39de049d4fc15'
         run: |
           set -euo pipefail
           binary="$HOME/.cache/velnor/workflow-runtime/${{ steps.renderer.outputs.closure }}/bin/velnor-workflow"
@@ -190,7 +202,7 @@ jobs:
           WORKFLOW_ROOT: ${{ github.workspace }}/policy-checkout
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
-          VELNOR_WORKFLOW_POLICY_REVISION: 4fa7a3a85f141a6bb95bc9bdf0eef9e3ddde165d
+          VELNOR_WORKFLOW_POLICY_REVISION: be61acbbbfb71db6b51337e547e39de049d4fc15
         run: |
           set -euo pipefail
           velnor-workflow policy \
@@ -210,19 +222,23 @@ jobs:
         env:
           MISE_NO_CONFIG: "1"
         run: mise exec actionlint@1.7.12 -- actionlint
-  github-opentofu:
-    name: "OpenTofu · OpenTofu"
-    if: ${{ always() && needs.plan.result == 'success' && needs.policy.result == 'success' && contains(format(',{0},', needs.plan.outputs.units), ',opentofu,') && (github.event_name == 'pull_request' || (github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule')) || (github.event_name == 'workflow_dispatch' && (github.event.inputs.runner == 'github' || github.event.inputs.runner == 'both' || github.event.inputs.runner == ''))) }}
+  github-hosted-opentofu:
+    name: "OpenTofu · OpenTofu · github-hosted — opentofu"
+    if: ${{ always() && needs.plan.result == 'success' && needs.policy.result == 'success' && contains(needs.plan.outputs.units, '"unit_id":"opentofu"') && (true) }}
     needs: [plan, policy]
     uses: ./.github/workflows/ci-unit-opentofu.yml
     with:
       unit: opentofu
-      lane: github
+      provider: github-hosted
       selected_units: ${{ needs.plan.outputs.units }}
+      selected_unit_ids: ${{ needs.plan.outputs.unit_ids }}
       scope: ${{ needs.plan.outputs.scope }}
       full_units: ${{ needs.plan.outputs.full_units }}
+      plan_digest: ${{ needs.plan.outputs.plan_digest }}
       base_sha: ${{ needs.plan.outputs.base_sha }}
       head_sha: ${{ needs.plan.outputs.head_sha }}
       cache_paths: "~/.terraform.d/plugin-cache"
       cache_key_files: "**/.terraform.lock.hcl"
-      unit_admission: github
+      unit_platform: linux-x64
+      unit_trust: untrusted-ok
+      unit_admission: github-hosted
