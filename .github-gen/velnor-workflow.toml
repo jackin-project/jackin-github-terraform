@@ -1,17 +1,14 @@
-schema = 1
+schema = 2
 [generator]
 repository = "jackin-project/jackin-github-terraform"
-revision = "4fa7a3a85f141a6bb95bc9bdf0eef9e3ddde165d"
+revision = "be61acbbbfb71db6b51337e547e39de049d4fc15"
+# Un-required posture: the live ruleset gates on nothing for this repo, so the
+# aggregate stays advisory (no ci-required job, no declared contexts).
 [policy]
-ruleset_required_status_checks = []
-ruleset_external_status_checks = []
 ci_required = false
 [workflow]
-runners = "github"
-automatic = "github"
-default_dispatch_runner = "github"
-automatic_lanes = "github"
-github_runner = "ubuntu-24.04"
-velnor_labels = ["self-hosted", "velnor-target-mvp"]
+providers = ["github-hosted"]
+automatic_providers = ["github-hosted"]
 default_branch = "main"
-
+[workflow.selectors.github-hosted]
+runs_on = ["ubuntu-24.04"]
