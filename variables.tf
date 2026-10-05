@@ -9,27 +9,27 @@ variable "repository_policies" {
     required_checks = list(string)
   }))
   default = {
+    # The current Velnor CI aggregator is Required; DCO is an independent app check.
     "homebrew-tap" = {
       disposition     = "FullRuleset"
       visibility      = "public"
-      required_checks = ["ci-required", "DCO", "Policy"]
+      required_checks = ["Required", "DCO"]
     }
     "jackin" = {
       disposition     = "FullRuleset"
       visibility      = "public"
-      required_checks = ["ci-required", "DCO", "Policy"]
+      required_checks = ["Required", "DCO"]
     }
     "jackin-agent-smith" = {
       disposition     = "FullRuleset"
       visibility      = "public"
-      required_checks = ["ci-required", "DCO", "Policy"]
+      required_checks = ["Required", "DCO"]
     }
     "jackin-dev" = {
       disposition     = "FullRuleset"
       visibility      = "public"
-      required_checks = ["ci-required", "DCO", "Policy"]
+      required_checks = ["Required", "DCO"]
     }
-    # Required aggregates plan, OpenTofu, and actionlint; DCO is an independent merge gate.
     "jackin-github-terraform" = {
       disposition     = "FullRuleset"
       visibility      = "public"
@@ -43,17 +43,17 @@ variable "repository_policies" {
     "jackin-role-action" = {
       disposition     = "FullRuleset"
       visibility      = "public"
-      required_checks = ["ci-required", "DCO", "Policy"]
+      required_checks = ["Required", "DCO"]
     }
     "jackin-sentinel" = {
       disposition     = "FullRuleset"
       visibility      = "public"
-      required_checks = ["ci-required", "DCO", "Policy"]
+      required_checks = ["Required", "DCO"]
     }
     "jackin-the-architect" = {
       disposition     = "FullRuleset"
       visibility      = "public"
-      required_checks = ["ci-required", "DCO", "Policy"]
+      required_checks = ["Required", "DCO"]
     }
   }
 }

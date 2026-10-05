@@ -36,8 +36,8 @@ resource "github_repository" "managed_settings" {
   squash_merge_commit_title   = "PR_TITLE"
   squash_merge_commit_message = "PR_BODY"
 
-  # Branch lifecycle management
-  allow_update_branch    = true
+  # Keep GitHub from offering the pull-request branch-update action.
+  allow_update_branch    = false
   delete_branch_on_merge = true
 
   lifecycle {
