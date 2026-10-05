@@ -50,8 +50,11 @@ variable "repository_policies" {
   # There are no no-CI exceptions: every inventory entry must have a verified required context.
   validation {
     condition = alltrue([
-      for policy in values(var.repository_policies) : length(policy.required_checks) > 0
+      for policy in values(var.repository_policies) :
+      length(policy.required_checks) > 0 && alltrue([
+        for context in policy.required_checks : trimspace(context) != ""
+      ])
     ])
-    error_message = "Every managed repository must declare at least one verified required CI context."
+    error_message = "Every managed repository must declare at least one nonblank, verified required CI context."
   }
 }

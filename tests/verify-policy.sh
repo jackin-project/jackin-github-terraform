@@ -122,11 +122,15 @@ expected = {
     "jackin-the-architect": {"Required", "DCO"},
     "jackin-marketplace": {"Policy"},
 }
+expected_visibility = {name: "public" for name in expected}
 
 policies = {}
+visibility = {}
 for name, body in re.findall(r'"([^"]+)"\s*=\s*\{(.*?)\n\s*\}', content, re.S):
     checks = re.search(r'required_checks\s*=\s*\[([^\]]*)\]', body)
     policies[name] = re.findall(r'"([^"]+)"', checks.group(1)) if checks else []
+    value = re.search(r'visibility\s*=\s*"([^"]+)"', body)
+    visibility[name] = value.group(1) if value else None
 
 missing = sorted(set(expected) - set(policies))
 incorrect = {
@@ -134,11 +138,12 @@ incorrect = {
     for name, contexts in expected.items()
     if name in policies and (set(policies[name]) != contexts or len(policies[name]) != len(contexts))
 }
-if missing or incorrect:
-    print(f"FAILED: Missing policy entries: {missing}; incorrect required contexts: {incorrect}.")
+incorrect_visibility = {name: visibility.get(name) for name, expected_value in expected_visibility.items() if visibility.get(name) != expected_value}
+if missing or incorrect or incorrect_visibility:
+    print(f"FAILED: Missing policy entries: {missing}; incorrect required contexts: {incorrect}; incorrect visibility: {incorrect_visibility}.")
     sys.exit(1)
 
-print("SUCCESS: All 8 target repos require Required and DCO; marketplace retains its verified Policy context.")
+print("SUCCESS: All 8 target repos require Required and DCO, all 9 remain public, and marketplace retains its verified Policy context.")
 EOF
 
 echo "=== 6. Verifying every managed repository gets protections and nonempty required CI contexts ==="
@@ -153,14 +158,14 @@ empty = []
 for name, body in policies:
     checks = re.search(r'required_checks\s*=\s*\[([^\]]*)\]', body)
     contexts = re.findall(r'"([^"]+)"', checks.group(1)) if checks else []
-    if not contexts:
+    if not contexts or any(not context.strip() for context in contexts):
         empty.append(name)
 
 if empty:
-    print(f"FAILED: Managed repositories have no required CI contexts: {empty}.")
+    print(f"FAILED: Managed repositories have no nonblank required CI contexts: {empty}.")
     sys.exit(1)
 
-print(f"SUCCESS: All {len(policies)} inventory entries receive both rulesets and nonempty required CI contexts.")
+print(f"SUCCESS: All {len(policies)} inventory entries receive both rulesets and nonblank required CI contexts; there are no no-CI exceptions.")
 EOF
 
 echo "=== 7. Verifying existing live resources are adopted by import declarations ==="
