@@ -38,6 +38,11 @@ import sys
 from pathlib import Path
 
 migration = Path("migrations.tf").read_text()
+versions = Path("versions.tf").read_text()
+if not re.search(r'required_version\s*=\s*">=\s*1\.10(?:\.0)?"', versions):
+    print("FAILED: OpenTofu >= 1.10 is required for lifecycle in removed blocks.")
+    sys.exit(1)
+
 expected = {
     "module.repository_policy",
     "github_repository.managed_settings",
