@@ -4,56 +4,54 @@
 variable "repository_policies" {
   description = "Authoritative map of managed repository names to their protection policy configuration"
   type = map(object({
-    disposition     = string # "FullRuleset" | "RepoSettingsOnly"
     visibility      = string # "public" | "private"
     required_checks = list(string)
   }))
   default = {
     # The current Velnor CI aggregator is Required; DCO is an independent app check.
     "homebrew-tap" = {
-      disposition     = "FullRuleset"
       visibility      = "public"
       required_checks = ["Required", "DCO"]
     }
     "jackin" = {
-      disposition     = "FullRuleset"
       visibility      = "public"
       required_checks = ["Required", "DCO"]
     }
     "jackin-agent-smith" = {
-      disposition     = "FullRuleset"
       visibility      = "public"
       required_checks = ["Required", "DCO"]
     }
     "jackin-dev" = {
-      disposition     = "FullRuleset"
       visibility      = "public"
       required_checks = ["Required", "DCO"]
     }
     "jackin-github-terraform" = {
-      disposition     = "FullRuleset"
       visibility      = "public"
       required_checks = ["Required", "DCO"]
     }
     "jackin-marketplace" = {
-      disposition     = "FullRuleset"
       visibility      = "public"
       required_checks = ["Policy"]
     }
     "jackin-role-action" = {
-      disposition     = "FullRuleset"
       visibility      = "public"
       required_checks = ["Required", "DCO"]
     }
     "jackin-sentinel" = {
-      disposition     = "FullRuleset"
       visibility      = "public"
       required_checks = ["Required", "DCO"]
     }
     "jackin-the-architect" = {
-      disposition     = "FullRuleset"
       visibility      = "public"
       required_checks = ["Required", "DCO"]
     }
+  }
+
+  # There are no no-CI exceptions: every inventory entry must have a verified required context.
+  validation {
+    condition = alltrue([
+      for policy in values(var.repository_policies) : length(policy.required_checks) > 0
+    ])
+    error_message = "Every managed repository must declare at least one verified required CI context."
   }
 }
