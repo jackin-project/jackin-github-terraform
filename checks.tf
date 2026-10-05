@@ -19,10 +19,22 @@ check "mandatory_target_repositories_present" {
   }
 }
 
+check "all_managed_repositories_have_required_checks" {
+  assert {
+    condition = alltrue([
+      for repo in values(var.repository_policies) :
+      length(repo.required_checks) > 0 && alltrue([
+        for context in repo.required_checks : trimspace(context) != ""
+      ])
+    ])
+    error_message = "Every managed repository must declare at least one nonblank, verified required CI context."
+  }
+}
+
 check "self_protection_enforced" {
   assert {
-    condition     = lookup(var.repository_policies, "jackin-github-terraform", null) != null && var.repository_policies["jackin-github-terraform"].disposition == "FullRuleset"
-    error_message = "jackin-github-terraform must protect itself with FullRuleset disposition."
+    condition     = lookup(var.repository_policies, "jackin-github-terraform", null) != null
+    error_message = "jackin-github-terraform must remain in the managed repository inventory; every inventory entry receives both rulesets."
   }
 }
 
