@@ -29,10 +29,11 @@ variable "repository_policies" {
       visibility      = "public"
       required_checks = ["ci-required", "DCO", "Policy"]
     }
+    # Required aggregates plan, OpenTofu, and actionlint; DCO is an independent merge gate.
     "jackin-github-terraform" = {
       disposition     = "FullRuleset"
       visibility      = "public"
-      required_checks = ["Policy"]
+      required_checks = ["Required", "DCO"]
     }
     "jackin-marketplace" = {
       disposition     = "FullRuleset"
