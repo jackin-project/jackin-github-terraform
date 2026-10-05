@@ -26,6 +26,17 @@ check "self_protection_enforced" {
   }
 }
 
+check "jackin_terraform_required_checks_match_ci" {
+  assert {
+    condition = contains(keys(var.repository_policies), "jackin-github-terraform") ? (
+      length(var.repository_policies["jackin-github-terraform"].required_checks) == 2 &&
+      contains(var.repository_policies["jackin-github-terraform"].required_checks, "Required") &&
+      contains(var.repository_policies["jackin-github-terraform"].required_checks, "DCO")
+    ) : false
+    error_message = "jackin-github-terraform must require the current green CI aggregator (Required) and DCO checks."
+  }
+}
+
 check "delete_branch_on_merge_mandate" {
   assert {
     condition = alltrue([

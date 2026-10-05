@@ -78,10 +78,32 @@ check_pattern(r'required_linear_history\s*=\s*true', "required_linear_history = 
 check_pattern(r'deletion\s*=\s*true', "deletion = true")
 check_pattern(r'non_fast_forward\s*=\s*true', "non_fast_forward = true")
 check_pattern(r'required_review_thread_resolution\s*=\s*true', "required_review_thread_resolution = true")
+check_pattern(r'strict_required_status_checks_policy\s*=\s*false', "strict_required_status_checks_policy = false")
 
 assert 'bypass_actors' not in mod, "No bypass_actors allowed on core protection"
 
 print("SUCCESS: All canonical policy invariants verified in modules/repository-policy/main.tf.")
+EOF
+
+echo "=== 5. Verifying this repository's required CI contexts ==="
+python3 - << 'EOF'
+import re, sys
+
+with open("variables.tf") as f:
+    content = f.read()
+
+repo = re.search(r'"jackin-github-terraform"\s*=\s*\{(?P<body>.*?)\n\s*\}', content, re.S)
+if not repo:
+    print("FAILED: jackin-github-terraform policy is missing from variables.tf.")
+    sys.exit(1)
+
+checks = re.search(r'required_checks\s*=\s*\[([^\]]*)\]', repo.group("body"))
+context_list = re.findall(r'"([^"]+)"', checks.group(1)) if checks else []
+if set(context_list) != {"Required", "DCO"} or len(context_list) != 2:
+    print(f"FAILED: Expected Required and DCO as the exact required contexts; found {context_list}.")
+    sys.exit(1)
+
+print("SUCCESS: Required and DCO are the exact declared merge-gate contexts.")
 EOF
 
 echo "=== ALL VERIFICATIONS PASSED ==="
